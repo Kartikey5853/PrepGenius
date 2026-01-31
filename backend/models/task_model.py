@@ -1,0 +1,13 @@
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
+from database import Base
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    task_name = Column(String)
+    task_type = Column(String)   # "daily" or "weekly"
+
+    is_completed = Column(Boolean, default=False)
