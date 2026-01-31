@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routes.profile_routes import router as profile_router
 
 from database import engine, Base
 
@@ -43,6 +44,7 @@ app.add_middleware(
 # ------------------------
 
 app.include_router(auth_router)
+app.include_router(profile_router)
 
 # ------------------------
 # Root

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -9,39 +9,88 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { User, FileText, Briefcase, Upload, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { mockUser } from "@/lib/mockData";
+import api from "@/lib/axios";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [name, setName] = useState(user?.name || mockUser.name);
+  
+  // States
+  const [name, setName] = useState(user?.name || "");
   const [password, setPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [resumeScore] = useState(mockUser.resume_score);
-  const [suggestedCompanies] = useState(mockUser.suggested_companies);
+  const [resumeScore, setResumeScore] = useState<number | null>(null);
+  const [suggestedCompanies, setSuggestedCompanies] = useState<string[]>([]);
+
+  // Load profile data on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await api.get("/profile");
+        setName(res.data.name);
+        setResumeScore(res.data.resume_score || 0);
+        setSuggestedCompanies(res.data.suggested_companies || []);
+      } catch (error) {
+        console.error("Failed to fetch profile", error);
+      }
+    };
+    loadProfile();
+  }, []);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Profile updated",
-      description: "Your changes have been saved successfully.",
-    });
-    setIsSaving(false);
+    try {
+      await api.put("/profile", {
+        name,
+        password: password || null,
+      });
+
+      toast({
+        title: "Profile updated",
+        description: "Your changes have been saved successfully.",
+      });
+      setPassword("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleUploadResume = async () => {
     setIsUploading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    toast({
-      title: "Resume uploaded",
-      description: "Your resume has been analyzed successfully.",
-    });
-    setIsUploading(false);
+    try {
+      // Note: In a real scenario, you'd trigger a file input click
+      // This follows your logic of using a Blob for the API connection test
+      const formData = new FormData();
+      formData.append("file", new Blob()); 
+
+      const res = await api.post("/profile/resume", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setResumeScore(res.data.resume_score);
+      setSuggestedCompanies(res.data.suggested_companies);
+
+      toast({
+        title: "Resume uploaded",
+        description: "Your resume has been analyzed successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Could not process resume. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const containerVariants = {
@@ -90,7 +139,7 @@ const Profile = () => {
                   <Label htmlFor="userId">User ID</Label>
                   <Input
                     id="userId"
-                    value={user?.user_id || mockUser.user_id}
+                    value={user?.user_id || "Loading..."}
                     disabled
                     className="bg-muted"
                   />
@@ -178,9 +227,9 @@ const Profile = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Resume Score</span>
-                    <span className="text-sm font-bold text-accent">{resumeScore}/100</span>
+                    <span className="text-sm font-bold text-accent">{resumeScore ?? 0}/100</span>
                   </div>
-                  <Progress value={resumeScore} className="h-2" />
+                  <Progress value={resumeScore || 0} className="h-2" />
                 </div>
               </CardContent>
             </Card>
@@ -202,18 +251,22 @@ const Profile = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {suggestedCompanies.map((company, index) => (
-                    <motion.div
-                      key={company}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Badge variant="secondary" className="text-sm py-1.5 px-3">
-                        {company}
-                      </Badge>
-                    </motion.div>
-                  ))}
+                  {suggestedCompanies.length > 0 ? (
+                    suggestedCompanies.map((company, index) => (
+                      <motion.div
+                        key={company}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <Badge variant="secondary" className="text-sm py-1.5 px-3">
+                          {company}
+                        </Badge>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Upload your resume to see recommendations.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

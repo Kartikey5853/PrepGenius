@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from typing import Optional
 
 class RegisterRequest(BaseModel):
     user_id: str
@@ -17,7 +17,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
-    
+
 class UserResponse(BaseModel):
     id: int
     user_id: str
@@ -26,3 +26,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ProfileUpdateRequest(BaseModel):
+    name: str
+    password: Optional[str] = None
